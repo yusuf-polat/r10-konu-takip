@@ -5,28 +5,40 @@ const MCP_WS_URL = 'ws://127.0.0.1:9922';
 
 let socket = null;
 let lastKnownToken = null;
+let isConnecting = false;
 
-// Connect to local MCP WebSocket server if available
+// Connect to local MCP WebSocket server safely
 function initWebSocket() {
-  try {
-    socket = new WebSocket(MCP_WS_URL);
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+  if (isConnecting) return;
 
-    socket.onopen = () => {
+  try {
+    isConnecting = true;
+    const ws = new WebSocket(MCP_WS_URL);
+
+    ws.onopen = () => {
+      isConnecting = false;
+      socket = ws;
       console.log('[R10 Sync] WebSocket connected to MCP Server.');
     };
 
-    socket.onmessage = (event) => {
-      console.log('[R10 Sync] Message from MCP Server:', event.data);
+    ws.onmessage = (event) => {
+      console.log('[R10 Sync] Server message:', event.data);
     };
 
-    socket.onclose = () => {
+    ws.onclose = () => {
+      isConnecting = false;
       socket = null;
     };
 
-    socket.onerror = () => {
+    ws.onerror = () => {
+      isConnecting = false;
       socket = null;
     };
   } catch (err) {
+    isConnecting = false;
     socket = null;
   }
 }
@@ -51,7 +63,7 @@ async function syncToMcpServer(tokenOverride = null) {
   const userAgent = navigator.userAgent;
 
   if (!cookieString) {
-    return { success: false, error: 'No R10 cookies found. Please log in to https://www.r10.net' };
+    return { success: false, error: 'R10 çerezleri bulunamadı. Lütfen https://www.r10.net adresine giriş yapın.' };
   }
 
   const payload = {
@@ -61,12 +73,16 @@ async function syncToMcpServer(tokenOverride = null) {
     userAgent: userAgent
   };
 
-  // Try WebSocket first
+  // Try WebSocket if connected
   if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify(payload));
-    const now = new Date().toISOString();
-    await chrome.storage.local.set({ lastSync: now });
-    return { success: true, method: 'websocket', timestamp: now };
+    try {
+      socket.send(JSON.stringify(payload));
+      const now = new Date().toISOString();
+      await chrome.storage.local.set({ lastSync: now });
+      return { success: true, method: 'websocket', timestamp: now };
+    } catch (e) {
+      // fallback to HTTP
+    }
   }
 
   // Fallback to HTTP POST
@@ -84,9 +100,13 @@ async function syncToMcpServer(tokenOverride = null) {
     const data = await res.json();
     const now = new Date().toISOString();
     await chrome.storage.local.set({ lastSync: now });
+
+    // Server is up -> try initializing WebSocket
+    initWebSocket();
+
     return { success: true, method: 'http', timestamp: now, data };
   } catch (err) {
-    return { success: false, error: `Could not connect to MCP server: ${err.message}` };
+    return { success: false, error: `MCP sunucusuna bağlanılamadı. Lütfen 'npm start' veya 'npm run sync-server' ile sunucuyu başlatın.` };
   }
 }
 
@@ -96,7 +116,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     lastKnownToken = message.securityToken;
     chrome.storage.local.set({ securityToken: message.securityToken });
 
-    // Check if auto-sync is enabled
     chrome.storage.local.get(['autoSync'], (res) => {
       if (res.autoSync !== false) {
         syncToMcpServer(message.securityToken);
@@ -108,13 +127,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === 'MANUAL_SYNC') {
     syncToMcpServer().then(sendResponse);
-    return true; // Keep channel open for async response
+    return true;
   }
 
   if (message.action === 'CHECK_SERVER_STATUS') {
     fetch(MCP_STATUS_URL)
       .then(res => res.json())
-      .then(data => sendResponse({ online: true, data }))
+      .then(data => {
+        initWebSocket();
+        sendResponse({ online: true, data });
+      })
       .catch(err => sendResponse({ online: false, error: err.message }));
     return true;
   }
@@ -130,6 +152,3 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     });
   }
 });
-
-// Try establishing WebSocket connection at startup
-initWebSocket();

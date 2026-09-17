@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node src/index.js",
+    "sync-server": "node -e \"require('./src/sync-server.js').startSyncServer()\"",
     "test": "node test_client.js",
     "test:rpc": "node test_mcp_rpc.js"
   },
