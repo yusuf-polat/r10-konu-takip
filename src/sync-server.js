@@ -107,51 +107,66 @@ function startSyncServer(port = SYNC_PORT) {
     res.end();
   });
 
-  // Attach WebSocket Server
-  const wss = new WebSocketServer({ server });
-
-  wss.on('connection', (ws) => {
-    console.error('[Sync Server] 🔌 Chrome Extension WebSocket connected!');
-
-    ws.send(JSON.stringify({
-      type: 'INIT_ACK',
-      message: 'Connected to R10 MCP Sync Server',
-      lastSync: lastSyncTime
-    }));
-
-    ws.on('message', (message) => {
-      try {
-        const payload = JSON.parse(message.toString());
-        if (payload.type === 'R10_SYNC' || payload.cookie) {
-          applyCredentials(payload);
-          ws.send(JSON.stringify({
-            type: 'SYNC_ACK',
-            success: true,
-            syncedAt: lastSyncTime
-          }));
-        }
-      } catch (err) {
-        console.error('[Sync Server] WebSocket message error:', err.message);
-        ws.send(JSON.stringify({ type: 'ERROR', message: err.message }));
-      }
-    });
-
-    ws.on('close', () => {
-      console.error('[Sync Server] Chrome Extension WebSocket disconnected.');
-    });
-  });
-
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      console.error(`[Sync Server] Port ${port} is already in use. Sync server might already be running.`);
+      console.error(`[Sync Server] Note: Port ${port} is already in use by another instance. Skipping sync listener.`);
     } else {
       console.error('[Sync Server] Server error:', err.message);
     }
   });
 
-  server.listen(port, '127.0.0.1', () => {
-    console.error(`[Sync Server] 🚀 Listening for Chrome Extension sync on http://127.0.0.1:${port} & ws://127.0.0.1:${port}`);
-  });
+  // Attach WebSocket Server with its own error handler to prevent unhandled error crashes
+  let wss = null;
+  try {
+    wss = new WebSocketServer({ server });
+
+    wss.on('error', (err) => {
+      if (err.code !== 'EADDRINUSE') {
+        console.error('[Sync Server] WebSocket server error:', err.message);
+      }
+    });
+
+    wss.on('connection', (ws) => {
+      console.error('[Sync Server] 🔌 Chrome Extension WebSocket connected!');
+
+      ws.send(JSON.stringify({
+        type: 'INIT_ACK',
+        message: 'Connected to R10 MCP Sync Server',
+        lastSync: lastSyncTime
+      }));
+
+      ws.on('message', (message) => {
+        try {
+          const payload = JSON.parse(message.toString());
+          if (payload.type === 'R10_SYNC' || payload.cookie) {
+            applyCredentials(payload);
+            ws.send(JSON.stringify({
+              type: 'SYNC_ACK',
+              success: true,
+              syncedAt: lastSyncTime
+            }));
+          }
+        } catch (err) {
+          console.error('[Sync Server] WebSocket message error:', err.message);
+          ws.send(JSON.stringify({ type: 'ERROR', message: err.message }));
+        }
+      });
+
+      ws.on('close', () => {
+        console.error('[Sync Server] Chrome Extension WebSocket disconnected.');
+      });
+    });
+  } catch (wsInitErr) {
+    console.error('[Sync Server] WebSocket initialization notice:', wsInitErr.message);
+  }
+
+  try {
+    server.listen(port, '127.0.0.1', () => {
+      console.error(`[Sync Server] 🚀 Listening for Chrome Extension sync on http://127.0.0.1:${port} & ws://127.0.0.1:${port}`);
+    });
+  } catch (listenErr) {
+    console.error('[Sync Server] Listen notice:', listenErr.message);
+  }
 
   serverInstance = server;
   return server;
