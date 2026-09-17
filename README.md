@@ -1,230 +1,204 @@
-# R10.net Forum Tracker MCP Server
+# 🚀 R10.net Forum Tracker MCP Server & Chrome Extension Bridge
 
 [![MCP Standard](https://img.shields.io/badge/MCP-Model_Context_Protocol-blue.svg)](https://modelcontextprotocol.io/)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Chrome Extension](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-orange.svg)]()
+[![Chrome Extension](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-orange.svg)](./extension)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)]()
+[![GitHub Repo](https://img.shields.io/badge/GitHub-yusuf--polat%2Fr10--konu--takip-181717.svg?logo=github)](https://github.com/yusuf-polat/r10-konu-takip)
 
-A high-performance, production-ready **Model Context Protocol (MCP)** server built in Node.js for interacting with **[R10.net](https://www.r10.net/)**—Turkey's premier webmaster and digital technology community.
+Türkiye'nin en büyük webmaster ve teknoloji forumu **[R10.net](https://www.r10.net/)** için geliştirilmiş, yüksek performanslı ve çift taraflı senkronizasyon yeteneğine sahip **Model Context Protocol (MCP)** sunucusu ve **Google Chrome Eklentisi (Manifest V3)** köprüsü.
 
-Includes a companion **Chrome Extension (Manifest V3)** that automatically synchronizes active session cookies and security tokens to your MCP server in real-time via WebSocket and local HTTP sync.
-
-Empowers AI assistants (such as **Claude Desktop**, **Cursor IDE**, **Antigravity**, **Cline**, and **Windsurf**) to monitor new threads in real-time, search discussions across the entire forum, filter content by category/author/keywords, and read full thread posts and replies.
+Bu proje sayesinde **Claude Desktop**, **Cursor IDE**, **Google Antigravity**, **Cline**, **Windsurf** gibi tüm modern yapay zeka asistanları R10 üzerindeki yeni konuları canlı takip edebilir, forumda arama yapabilir, belirli kategorileri filtreleyebilir ve konu içeriklerini doğrudan okuyabilir.
 
 ---
 
-## 📑 Table of Contents
+## 📑 İçindekiler / Table of Contents
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Architecture & Two-Part Design](#architecture--two-part-design)
-- [Prerequisites](#prerequisites)
-- [Quick Start & Installation](#quick-start--installation)
-  - [1. Clone Repository](#1-clone-repository)
-  - [2. Install Dependencies](#2-install-dependencies)
-- [Authentication: Two Flexible Methods](#authentication-two-flexible-methods)
-  - [Method A: Chrome Extension Auto-Sync (Recommended — Zero Copy/Paste)](#method-a-chrome-extension-auto-sync-recommended--zero-copypaste)
-  - [Method B: Manual Setup via .env (Headless / Standalone)](#method-b-manual-setup-via-env-headless--standalone)
-- [Client Integration Guides](#client-integration-guides)
+- [✨ Temel Özellikler](#-temel-özellikler)
+- [🧩 Chrome Eklentisi ve Mimarisi](#-chrome-eklentisi-ve-mimarisi)
+- [🛠️ Adım Adım Kurulum Kılavuzu (Türkçe)](#️-adım-adım-kurulum-kılavuzu-türkçe)
+  - [1. Projeyi Klonlayın ve Bağımlılıkları Yükleyin](#1-projeyi-klonlayın-ve-bağımlılıkları-yükleyin)
+  - [2. Chrome Eklentisini Tarayıcıya Yükleme (Adım Adım)](#2-chrome-eklentisini-tarayıcıya-yükleme-adım-adım)
+  - [3. Eklenti ile Tek Tıkla Senkronizasyon (Sıfır Manuel İşlem)](#3-eklenti-ile-tek-tıkla-senkronizasyon-sıfır-manuel-i̇şlem)
+  - [4. Alternatif: Manuel .env Yapılandırması (Sunucu / Headless)](#4-alternatif-manuel-env-yapılandırması-sunucu--headless)
+- [🤖 Yapay Zeka İstemcilerine Entegrasyon](#-yapay-zeka-i̇stemcilerine-entegrasyon)
   - [Claude Desktop](#claude-desktop)
   - [Cursor IDE](#cursor-ide)
-  - [Antigravity / Gemini CLI](#antigravity--gemini-cli)
+  - [Google Antigravity / Gemini CLI](#google-antigravity--gemini-cli)
   - [Cline / Roo Code / Windsurf](#cline--roo-code--windsurf)
-- [Tools Reference](#tools-reference)
-  - [`r10_get_latest_threads`](#1-r10_get_latest_threads)
-  - [`r10_search_threads`](#2-r10_search_threads)
-  - [`r10_filter_threads`](#3-r10_filter_threads)
-  - [`r10_track_new_threads`](#4-r10_track_new_threads)
-  - [`r10_get_thread_details`](#5-r10_get_thread_details)
-  - [`r10_get_categories`](#6-r10_get_categories)
-- [Example AI Prompts](#example-ai-prompts)
-- [Troubleshooting & FAQs](#troubleshooting--faqs)
-- [Verification & Testing](#verification--testing)
-- [Contributing](#contributing)
-- [License & Disclaimer](#license--disclaimer)
+- [🧰 MCP Araçları Referansı (Tools)](#-mcp-araçları-referansı-tools)
+- [💬 Örnek Komutlar ve Promptlar](#-örnek-komutlar-ve-promptlar)
+- [🔍 Sıkça Sorulan Sorular ve Sorun Giderme](#-sıkça-sorulan-sorular-ve-sorun-giderme)
+- [English Documentation](#-english-documentation-summary)
+- [Lisans ve Yasal Uyarı](#-lisans-ve-yasal-uyarı)
 
 ---
 
-## 🌟 Overview
+## ✨ Temel Özellikler
 
-Tracking active forum discussions manually is time-consuming. This MCP server bridges the gap between R10.net and modern LLMs by leveraging R10's native AJAX endpoints (`ajax.php?do=anasayfaTab`) and search infrastructure.
-
-Instead of heavy browser automation or fragile HTML scraping, this project:
-- Parses structured XML/CDATA feeds with high-speed Cheerio processing.
-- Features **automated real-time session synchronization** via an included Chrome Extension.
-- Automatically handles expired `securitytoken` values dynamically.
-- Implements a **stateful tracker** that remembers seen threads and yields only fresh items.
-- Maintains strict **JSON-RPC stdio compliance** with silent environment loading so host agents never encounter parsing collisions.
-
----
-
-## 🚀 Key Features
-
-| Feature | Description |
+| Özellik | Açıklama |
 | :--- | :--- |
-| **🔌 Real-Time Chrome Extension Sync** | Automatic background sync of active cookies, user-agent, and CSRF tokens over WebSocket/HTTP. No manual DevTools copying required. |
-| **⚡ Real-Time Tab Feeds** | Fetch newly opened threads (`sonAcilan`), active replies (`sonCevaplanan`), popular discussions (`populer`), or articles (`blog`). |
-| **🔎 Global Forum Search** | Query the entire forum history using R10's native search engine. |
-| **🎯 Multi-Page Filtering** | Scan multiple pages simultaneously with Turkish-locale-aware filtering on titles, previews, authors, and categories. |
-| **🔔 Stateful Live Tracker** | Detect and stream *only* unseen threads opened after the initial check. Perfect for background polling and alerts. |
-| **📖 Deep Thread Reader** | Read the full main post text and the latest member replies cleanly converted from HTML. |
-| **🛡️ Auto-Healing Tokens** | If R10 returns an expired CSRF/security token error, the server automatically fetches a fresh token and retries the request. |
+| 🔌 **Otomatik Chrome Eklentisi Köprüsü** | DevTools açıp cookie kopyalama derdine son! Eklenti, R10 oturum çerezlerini, CSRF güvenlik tokenını ve User-Agent bilgisini WebSocket / HTTP üzerinden yerel MCP sunucunuza aktarır. |
+| ⚡ **Canlı Sekme Akışları** | R10 anasayfasındaki **Son Açılan Konular** (`sonAcilan`), **Son Cevaplananlar** (`sonCevaplanan`), **Popüler Konular** (`populer`) ve **Blog** sekmelerini anlık olarak çeker. |
+| 🔎 **Gelişmiş Forum İçi Arama** | R10'un yerel arama altyapısını kullanarak tüm forum genelinde kelime bazlı arama yapar. |
+| 🎯 **Çok Sayfalı Akıllı Filtreleme** | Birden çok sayfayı aynı anda tarar; kategoriye, yazara veya başlık/içerik anahtar kelimelerine göre Türkçe karakter duyarlı filtreler. |
+| 🔔 **Durum Bilgili Canlı Takip (Stateful Tracker)** | Önceden görülen konuları belleğinde tutar ve her sorguda yalnızca **yeni açılmış** konuları döndürür. Arka plan ajanları için mükemmeldir. |
+| 📖 **Derin Konu ve Cevap Okuyucu** | Belirtilen konunun ilk mesajını ve son gelen cevapları HTML'den temizlenmiş, okunabilir metin formatında sunar. |
+| 🛡️ **Otomatik İyileşen Tokenlar (Self-Healing)** | Token süresi dolarsa MCP sunucusu otomatik olarak yeni `securitytoken` alır ve isteği tekrar dener. |
 
 ---
 
-## 🏗️ Architecture & Two-Part Design
+## 🧩 Chrome Eklentisi ve Mimarisi
+
+R10.net Cloudflare koruması ve dinamik `securitytoken` kullandığından, en stabil yöntem kullanıcının kendi tarayıcısındaki geçerli oturumu kullanmaktır. Bu projedeki **Chrome Eklentisi (Manifest V3)**, tarayıcınız ile yerel MCP sunucusu arasında güvenli bir köprü görevi görür:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      AI Client                              │
+│                      AI Asistanı                            │
 │       (Claude Desktop, Cursor, Antigravity, Cline)          │
 └──────────────────────────────┬──────────────────────────────┘
-                               │  Standard JSON-RPC over Stdio
+                               │  Standart JSON-RPC (Stdio)
 ┌──────────────────────────────▼──────────────────────────────┐
 │                    R10 MCP Server (Node.js)                 │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │ src/index.js (StdioServerTransport & Tool Registry)    │ │
+│  │ src/index.js (Stdio Server & Tool Kayıtları)           │ │
 │  └──────────────┬───────────────────────────┬─────────────┘ │
 │                 │                           │               │
 │  ┌──────────────▼───────────┐ ┌─────────────▼─────────────┐ │
 │  │ src/r10-client.js        │ │ src/sync-server.js        │ │
-│  │ (Parser, Cache, Search)  │ │ (HTTP & WS on Port 9922)  │ │
+│  │ (Parser, Cache, Arama)   │ │ (HTTP & WS Port 9922)     │ │
 │  └──────────────┬───────────┘ └─────────────▲─────────────┘ │
 │                 │                           │               │
 │  ┌──────────────▼───────────┐               │ WebSocket /   │
 │  │ src/config.js            │               │ HTTP POST     │
-│  │ (Config & .env Fallback) │               │               │
+│  │ (Çerez & Runtime Config) │               │               │
 │  └──────────────┬───────────┘               │               │
 └─────────────────┼───────────────────────────┼───────────────┘
                   │                           │
-                  │ HTTPS Requests            │
+                  │ HTTPS İstekleri           │
 ┌─────────────────▼───────────┐ ┌─────────────┴─────────────┐
 │     R10.net Cloudflare      │ │  Chrome Extension (MV3)   │
-│  (ajax.php / search.php)    │ │  (extension/ directory)   │
+│  (ajax.php / search.php)    │ │  (extension/ klasörü)     │
 └─────────────────────────────┘ └───────────────────────────┘
 ```
 
 ---
 
-## 📋 Prerequisites
+## 🛠️ Adım Adım Kurulum Kılavuzu (Türkçe)
 
-- **Node.js**: `v18.0.0` or higher (`node -v`)
-- **npm**: `v9.0.0` or higher (`npm -v`)
-- **Google Chrome** (or Chromium-based browser like Brave, Edge)
-- An active **R10.net** user account.
+### 1. Projeyi Klonlayın ve Bağımlılıkları Yükleyin
 
----
-
-## 📦 Quick Start & Installation
-
-### 1. Clone Repository
+Terminal veya PowerShell açın:
 
 ```bash
-git clone https://github.com/your-username/r10-mcp-server.git
-cd r10-mcp-server
-```
-
-### 2. Install Dependencies
-
-```bash
+git clone https://github.com/yusuf-polat/r10-konu-takip.git
+cd r10-konu-takip
 npm install
 ```
 
 ---
 
-## 🔐 Authentication: Two Flexible Methods
+### 2. Chrome Eklentisini Tarayıcıya Yükleme (Adım Adım)
 
-You can supply R10 session credentials in either of two ways:
+Eklenti projenin içindeki `extension/` klasöründe hazır olarak yer almaktadır. Herhangi bir derleme (build) işlemine gerek yoktur.
 
-### Method A: Chrome Extension Auto-Sync (Recommended — Zero Copy/Paste)
-
-This repository includes a companion Manifest V3 Chrome Extension located in the `extension/` directory. It automatically extracts your session cookies and security token from your browser and pushes them to the local MCP server.
-
-1. Open your browser and navigate to `chrome://extensions/`.
-2. Toggle on **Developer mode** in the top-right corner.
-3. Click **Load unpacked** in the top-left corner.
-4. Select the `extension` folder inside this repository:
+1. **Google Chrome** (veya Brave, Microsoft Edge, Opera vb. Chromium tabanlı bir tarayıcı) açın.
+2. Adres çubuğuna şunu yazıp `Enter` tuşuna basın:
+   ```text
+   chrome://extensions/
    ```
-   d:/r10-konu-takip/extension
+3. Sağ üst köşede bulunan **"Geliştirici Modu" (Developer Mode)** anahtarını **AÇIK** konuma getirin.
+4. Sol üstte beliren **"Paketlenmemiş öğe yükle" (Load unpacked)** butonuna tıklayın.
+5. Açılan dosya seçme penceresinde indirdiğiniz projedeki `extension` klasörünü seçin:
+   ```text
+   Örnek: D:\r10-konu-takip\extension
    ```
-5. Open **[https://www.r10.net](https://www.r10.net)** in your browser and ensure you are logged in.
-6. Click the **R10 MCP Bridge** icon in your Chrome toolbar.
-7. Click **"Sync Now to MCP"** (or leave **"Auto-Sync on R10 visit"** enabled).
-8. The popup will display `Online (Port 9922)` and confirm successful synchronization.
-
-> 💡 **Why this is awesome:** Whenever your R10 session or Cloudflare token updates, the extension automatically keeps your MCP server synchronized in the background without manual intervention.
+6. Eklenti listesinde **"R10 MCP Sync Bridge"** kartını ve tarayıcı araç çubuğunuzda simgesini göreceksiniz.
 
 ---
 
-### Method B: Manual Setup via `.env` (Headless / Standalone)
+### 3. Eklenti ile Tek Tıkla Senkronizasyon (Sıfır Manuel İşlem)
 
-If you prefer running in a headless environment without the Chrome extension:
+1. Tarayıcınızda yeni bir sekme açarak **[https://www.r10.net](https://www.r10.net)** adresine gidin ve üye girişi yapın.
+2. Tarayıcınızın uzantılar bölümünden **R10 MCP Sync Bridge** simgesine tıklayın:
+   - **MCP Server Durumu:** MCP sunucunuz (veya arka plan senkronizasyon sunucusu) çalışırken yeşil `Online (Port 9922)` olarak görünür.
+   - **R10 Cookies:** Tespit edilen çerez sayısını gösterir.
+3. **"Sync Now to MCP"** butonuna basın.
+4. Ekranda **"Successfully synced to MCP Server!"** yazısını göreceksiniz.
+5. Dilerseniz açılır penceredeki **"Auto-Sync on R10 visit"** seçeneğini açık bırakabilirsiniz; böylece siz R10'da gezinirken oturum bilgileriniz arka planda daima güncel kalır.
 
-1. Copy `.env.example` to create `.env`:
+> 💡 **İpucu:** Eğer yapay zeka aracınız henüz açık değilken sadece eklenti köprüsünü başlatıp senkronize etmek isterseniz terminalden şunu çalıştırabilirsiniz:
+> ```bash
+> npm run sync-server
+> ```
+
+---
+
+### 4. Alternatif: Manuel .env Yapılandırması (Sunucu / Headless)
+
+Eğer eklenti kullanmak istemiyorsanız veya sunucu ortamında çalışıyorsanız:
+
+1. `.env.example` dosyasını `.env` olarak kopyalayın:
    ```bash
    cp .env.example .env
    ```
-2. Open `https://www.r10.net` in your browser and log in.
-3. Press `F12` to open Developer Tools $\rightarrow$ **Network** tab.
-4. Filter by `anasayfaTab` (or click on the "Son Açılan" tab).
-5. Copy the request's `Cookie` header into `R10_COOKIE` in your `.env`.
-6. (Optional) Copy `securitytoken` from the request payload into `R10_SECURITY_TOKEN`.
-7. Ensure `R10_USER_AGENT` matches your browser's User-Agent.
-
-```env
-R10_COOKIE="RID=...; r10userid=...; cf_clearance=...; vbseo_loggedin=yes"
-R10_SECURITY_TOKEN="1780000000-abcdef0123456789abcdef0123456789abcdef01"
-R10_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-```
-
-> ⚠️ **SECURITY WARNING:**  
-> Never commit your `.env` file to a public Git repository. `.gitignore` is pre-configured to keep your secrets private.
+2. Tarayıcınızda R10'a giriş yapıp `F12` (Geliştirici Araçları) -> **Network** sekmesine gelin.
+3. Sayfayı yenileyip bir istekteki `Cookie` başlığını kopyalayın ve `.env` içindeki `R10_COOKIE` alanına yapıştırın:
+   ```env
+   R10_COOKIE="RID=...; r10userid=...; cf_clearance=...; vbseo_loggedin=yes"
+   R10_SECURITY_TOKEN="1780000000-abcdef0123456789..."
+   R10_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36..."
+   ```
 
 ---
 
-## 🔌 Client Integration Guides
+## 🤖 Yapay Zeka İstemcilerine Entegrasyon
 
 ### Claude Desktop
 
-Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+Aşağıdaki yapılandırma dosyasını açın:
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+Dosyaya sunucuyu ekleyin:
 
 ```json
 {
   "mcpServers": {
-    "r10-tracker": {
+    "r10-takip": {
       "command": "node",
       "args": ["D:/r10-konu-takip/src/index.js"]
     }
   }
 }
 ```
-
-Restart Claude Desktop. The hammer icon (⚒️) will list all 6 R10 tools.
+*(Yolu kendi proje konumunuza göre güncelleyin).*  
+Claude Desktop'ı yeniden başlattığınızda sağ altta çekiç (⚒️) simgesinde R10 araçları listelenecektir.
 
 ---
 
 ### Cursor IDE
 
-1. Open Cursor Settings (`Ctrl+,` or `Cmd+,`).
-2. Go to **Features** $\rightarrow$ **MCP Servers** $\rightarrow$ **Add New MCP Server**:
-   - **Name:** `r10-tracker`
+1. Cursor Ayarlarını açın (`Ctrl + ,` veya `Cmd + ,`).
+2. **Features** $\rightarrow$ **MCP Servers** $\rightarrow$ **Add New MCP Server** yolunu izleyin:
+   - **Name:** `r10-takip`
    - **Type:** `command`
    - **Command:** `node D:/r10-konu-takip/src/index.js`
-3. Save. The status indicator will turn green.
+3. Kaydedin. Durum ışığı yeşile dönecektir.
 
 ---
 
-### Antigravity / Gemini CLI
+### Google Antigravity / Gemini CLI
 
-Add to `mcp_config.json`:
+Projenin kök dizinindeki veya `.gemini` altındaki `mcp_config.json` içine ekleyin:
 
 ```json
 {
   "mcpServers": {
-    "r10-tracker": {
+    "r10-takip": {
       "command": "node",
-      "args": ["d:/r10-konu-takip/src/index.js"]
+      "args": ["D:/r10-konu-takip/src/index.js"]
     }
   }
 }
@@ -234,12 +208,12 @@ Add to `mcp_config.json`:
 
 ### Cline / Roo Code / Windsurf
 
-Add to your MCP settings file (`cline_mcp_settings.json`):
+Kullandığınız eklentinin MCP ayarlar dosyasına (`cline_mcp_settings.json` vb.) ekleyin:
 
 ```json
 {
   "mcpServers": {
-    "r10-tracker": {
+    "r10-takip": {
       "command": "node",
       "args": ["D:/r10-konu-takip/src/index.js"]
     }
@@ -249,168 +223,104 @@ Add to your MCP settings file (`cline_mcp_settings.json`):
 
 ---
 
-## 🧰 Tools Reference
+## 🧰 MCP Araçları Referansı (Tools)
+
+Sunucu yapay zekaya 6 güçlü fonksiyon sunar:
 
 ### 1. `r10_get_latest_threads`
-Fetches active threads from the chosen homepage tab.
-
-- **Parameters:**
-  | Parameter | Type | Default | Description |
-  | :--- | :--- | :--- | :--- |
-  | `tab` | `string` | `"sonAcilan"` | Tab to fetch: `"sonAcilan"`, `"sonCevaplanan"`, `"populer"`, `"blog"`. |
-  | `page` | `number` | `1` | Pagination number. |
-  | `limit` | `number` | `null` | Max number of threads to return (optional). |
-
-- **Sample Output:**
-  ```json
-  {
-    "sekme": "sonAcilan",
-    "sayfa": 1,
-    "toplam": 10,
-    "konular": [
-      {
-        "id": "4881102",
-        "title": "10 Google News Sitede Tanıtım Yazısı | SEO & Do-Follow Backlink",
-        "url": "https://www.r10.net/yazilim-web-hizmetleri/4881102-...html",
-        "preview": "Bu Fiyata Gerçekten Tam Bir Fiyat Performans Paketidir...",
-        "author": "BHE Digital",
-        "authorUrl": "https://www.r10.net/profil/130801-bhe-digital.html",
-        "avatarUrl": "https://cdn.r10.net/image.php?u=130801",
-        "isOnline": true,
-        "replies": 0,
-        "views": 25,
-        "category": "Yazılım ve Web Hizmetleri",
-        "categoryUrl": "https://www.r10.net/yazilim-web-hizmetleri/"
-      }
-    ]
-  }
-  ```
-
----
+Seçilen anasayfa sekmesinden en güncel konuları çeker.
+- **Parametreler:**
+  - `tab` *(string)*: `"sonAcilan"`, `"sonCevaplanan"`, `"populer"`, `"blog"` (Varsayılan: `"sonAcilan"`).
+  - `page` *(number)*: Sayfa numarası (Varsayılan: `1`).
+  - `limit` *(number)*: Getirilecek maksimum konu adedi.
 
 ### 2. `r10_search_threads`
-Executes a global query across the entire forum via R10's native search engine.
-
-- **Parameters:**
-  | Parameter | Type | Required | Description |
-  | :--- | :--- | :--- | :--- |
-  | `query` | `string` | **Yes** | Search phrase (e.g. `"ücretsiz api"`, `"python bot"`, `"backlink"`). |
-  | `limit` | `number` | No (default `15`) | Maximum matching results to return. |
-
----
+R10 genelinde anahtar kelime araması yapar.
+- **Parametreler:**
+  - `query` *(string, Zorunlu)*: Aranacak ifade (Örn: `"Python bot"`, `"ücretsiz backlink"`).
+  - `limit` *(number)*: Sonuç limiti (Varsayılan: `15`).
 
 ### 3. `r10_filter_threads`
-Performs deep in-feed scanning over multiple pages, filtering by keyword, category, or author.
-
-- **Parameters:**
-  | Parameter | Type | Default | Description |
-  | :--- | :--- | :--- | :--- |
-  | `keyword` | `string` | `null` | Keyword matching against thread title and first post preview. |
-  | `category` | `string` | `null` | Category name filter (e.g. `"Off-Topic"`, `"Yapay Zeka"`). |
-  | `author` | `string` | `null` | Username of the thread author. |
-  | `tab` | `string` | `"sonAcilan"` | Tab to search within. |
-  | `maxPages` | `number` | `3` | Number of sequential pages to inspect. |
-
----
+Birden fazla sayfayı tarayarak kategori, yazar ve anahtar kelimeye göre filtreler.
+- **Parametreler:**
+  - `keyword` *(string)*: Başlık veya önizleme metninde aranacak kelime.
+  - `category` *(string)*: Kategori adı (Örn: `"Yazılım ve Web Hizmetleri"`, `"Off-Topic"`).
+  - `author` *(string)*: Konuyu açan kullanıcı adı.
+  - `tab` *(string)*: Hangi sekmede taranacağı (Varsayılan: `"sonAcilan"`).
+  - `maxPages` *(number)*: Taranacak sayfa derinliği (Varsayılan: `3`).
 
 ### 4. `r10_track_new_threads`
-A state-aware tracker tool. Memorizes seen thread IDs in memory and on subsequent calls outputs **only newly opened threads** since the last check.
-
-- **Parameters:**
-  | Parameter | Type | Default | Description |
-  | :--- | :--- | :--- | :--- |
-  | `tab` | `string` | `"sonAcilan"` | Tab to monitor. |
-  | `category` | `string` | `null` | Filter new items by category. |
-  | `keyword` | `string` | `null` | Filter new items by keyword. |
-  | `reset` | `boolean` | `false` | Resets the tracking state and takes a fresh snapshot. |
-
----
+Canlı izleme aracı. Daha önce listelenen konuları hafızada tutar ve her çağrıldığında **sadece yeni açılmış** konuları getirir.
+- **Parametreler:**
+  - `tab` *(string)*: İzlenecek sekme.
+  - `category` *(string)*: İsteğe bağlı kategori filtresi.
+  - `keyword` *(string)*: İsteğe bağlı kelime filtresi.
+  - `reset` *(boolean)*: Takip hafızasını sıfırlayıp mevcut durumu başlangıç kabul eder.
 
 ### 5. `r10_get_thread_details`
-Reads the full opening post and recent replies from a thread.
-
-- **Parameters:**
-  | Parameter | Type | Required | Description |
-  | :--- | :--- | :--- | :--- |
-  | `threadUrlOrId` | `string` | **Yes** | Full thread URL or thread ID (e.g. `"4881102"`). |
-
-- **Returns:**
-  - `title`: Clean thread title.
-  - `author`: Post author name.
-  - `content`: Full textual content of the opening post.
-  - `recentReplies`: Array of the latest 5 replies (author, date, text snippet).
-
----
+Belirtilen konunun ilk mesajını ve son üye cevaplarını temiz metin olarak çeker.
+- **Parametreler:**
+  - `threadUrlOrId` *(string, Zorunlu)*: Konunun tam URL'si veya konu ID numarası (Örn: `"4881102"`).
 
 ### 6. `r10_get_categories`
-Analyzes recent forum traffic to list active categories and their current activity volume.
-
-- **Parameters:**
-  | Parameter | Type | Default | Description |
-  | :--- | :--- | :--- | :--- |
-  | `tab` | `string` | `"sonAcilan"` | Source feed. |
-  | `pages` | `number` | `3` | Number of pages to scan for category distribution. |
+Aktif sayfalardaki konu dağılımını analiz ederek en hareketli kategorileri ve konu sayılarını listeler.
+- **Parametreler:**
+  - `tab` *(string)*: Sekme (Varsayılan: `"sonAcilan"`).
+  - `pages` *(number)*: İncelenecek sayfa sayısı (Varsayılan: `3`).
 
 ---
 
-## 💬 Example AI Prompts
+## 💬 Örnek Komutlar ve Promptlar
 
-Try asking your AI assistant:
+Yapay zeka asistanınıza doğrudan şu cümlelerle talimat verebilirsiniz:
 
-- *"List the top 5 newest threads opened on R10."*
-- *"Search R10 for free TTS or text-to-speech API recommendations."*
-- *"Monitor R10 for new threads in the 'Yazılım ve Web Hizmetleri' category and let me know when a new one is posted."*
-- *"Fetch and summarize the discussion in R10 thread 4874052."*
-- *"Which categories currently have the most active threads on the homepage?"*
-
----
-
-## 🔧 Troubleshooting & FAQs
-
-### Q: The server returns `R10 Güvenlik Token hatası` (Security Token Error).
-**A:** This indicates that the `R10_SECURITY_TOKEN` has expired or the session is invalidated.
-1. The server will automatically try to fetch a fresh token from `https://www.r10.net/`.
-2. If using the Chrome Extension, click **"Sync Now to MCP"** in the popup to refresh.
-3. If running manually, update your `R10_COOKIE` in `.env`.
-
-### Q: Requests fail with HTTP 403 Forbidden.
-**A:** Cloudflare has challenged the connection.
-- Ensure your `R10_USER_AGENT` matches the browser from which you copied the cookies.
-- Visit R10.net in your browser to pass any Cloudflare Captcha, then trigger a sync via the extension or update `.env`.
-
-### Q: Does the Chrome Extension need to be open all the time?
-**A:** No. As long as you have the extension installed and visit R10 periodically, it keeps the MCP server credentials fresh.
+- 🗣️ *"R10'da son açılan 5 konuyu başlıkları ve kategorileriyle listele."*
+- 🗣️ *"R10'da 'yapay zeka' veya 'gemini api' hakkında açılmış konuları ara ve özetle."*
+- 🗣️ *"'Yazılım ve Web Hizmetleri' kategorisinde yeni konu açılırsa beni uyar, canlı takip et."*
+- 🗣️ *"4874052 numaralı R10 konusunun detayını oku, konudaki sorunu ve verilen çözümleri bana açıkla."*
+- 🗣️ *"R10 anasayfasında şu an en çok hangi kategorilerde konu açılıyor?"*
 
 ---
 
-## 🧪 Verification & Testing
+## 🔍 Sıkça Sorulan Sorular ve Sorun Giderme
 
-The repository includes standalone validation scripts:
+#### S: "R10 Güvenlik Token hatası" uyarısı alıyorum, ne yapmalıyım?
+**C:** R10 oturum tokenınızın süresi dolmuş olabilir. Tarayıcınızda R10.net'i yenileyin ve Chrome eklentisinden **"Sync Now to MCP"** butonuna basın. Sunucu yeni tokenı otomatik olarak kaydedecektir.
 
-```bash
-# 1. Test basic client operations (fetching tabs, filtering, categories):
-npm test
+#### S: Cloudflare 403 Forbidden hatası alıyorum.
+**C:** Cloudflare tarayıcı doğrulaması istemiş olabilir. Tarayıcınızda R10.net'i ziyaret edip doğrulama varsa geçin, ardından eklentiden senkronizasyonu yenileyin. Eklenti User-Agent değerinizi birebir aktararak Cloudflare engellerini aşar.
 
-# 2. Test full end-to-end JSON-RPC MCP server communication over stdio:
-npm run test:rpc
-```
+#### S: Chrome eklentisinde "Server Offline" yazıyor.
+**C:** MCP sunucusu yapay zeka aracınız (Claude/Cursor) çalıştığında otomatik başlar. Eğer bağımsız olarak eklentiyle senkronizasyon yapmak isterseniz terminalde `npm run sync-server` komutunu çalıştırabilirsiniz.
 
----
-
-## 🤝 Contributing
-
-Contributions are welcome! If you'd like to add new features:
-
-1. Fork the Project.
-2. Create a Feature Branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the Branch (`git push origin feature/AmazingFeature`).
-5. Open a Pull Request.
+#### S: Port 9922 çakışması uyarısı alıyorum.
+**C:** Sunucu çoklu istemci çalıştırdığınızda (EADDRINUSE) hatası almamak için güvenli port kontrolüne sahiptir. Eğer port başka bir işlem tarafından kullanılıyorsa `.env` dosyasına `MCP_SYNC_PORT=9923` yazarak portu değiştirebilirsiniz.
 
 ---
 
-## 📄 License & Disclaimer
+## 🌐 English Documentation Summary
 
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more details.
+<details>
+<summary>Click to expand English quickstart</summary>
 
-**Disclaimer:** This project is an unofficial community integration and is not officially affiliated with or endorsed by R10.net. Users are responsible for adhering to the forum's terms of service and reasonable rate-limiting practices.
+### Features:
+- Real-time forum tracking via R10.net native AJAX endpoints.
+- Companion Chrome Extension (Manifest V3) that auto-syncs session cookies, User-Agent, and CSRF `securitytoken` over WebSocket/HTTP.
+- 6 complete MCP tools: `r10_get_latest_threads`, `r10_search_threads`, `r10_filter_threads`, `r10_track_new_threads`, `r10_get_thread_details`, `r10_get_categories`.
+
+### Quick Setup:
+1. `git clone https://github.com/yusuf-polat/r10-konu-takip.git`
+2. `cd r10-konu-takip && npm install`
+3. Load the `extension/` directory into Chrome via `chrome://extensions/` (Developer Mode $\rightarrow$ Load Unpacked).
+4. Login to R10.net, click the extension icon, and click **"Sync Now to MCP"**.
+5. Add `node <PATH_TO>/src/index.js` to your Claude Desktop or Cursor MCP config.
+
+</details>
+
+---
+
+## 📄 Lisans ve Yasal Uyarı
+
+Bu proje **[MIT Lisansı](LICENSE)** ile lisanslanmıştır.
+
+**Yasal Uyarı:** Bu proje R10.net ile resmi bir bağı olmayan açık kaynaklı bir topluluk aracıdır. R10.net platformunun kullanım şartlarına ve makul istek sıklığı kurallarına uymak kullanıcının kendi sorumluluğundadır.
