@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "R10 MCP Sync Bridge",
+  "version": "1.0.0",
+  "description": "Automatically syncs active R10.net session cookies, security tokens, and user-agent to your local MCP server.",
+  "permissions": [
+    "cookies",
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.r10.net/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "R10 MCP Sync Bridge"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.r10.net/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
