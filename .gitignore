@@ -28,5 +28,6 @@ Thumbs.db
 # Temporary test outputs
 *.xml
 *.html
+!extension/**/*.html
 *.log
 test_out.*
