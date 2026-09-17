@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "r10-takip": {
+      "command": "node",
+      "args": [
+        "d:\\r10-konu-takip\\src\\index.js"
+      ]
+    }
+  }
+}
